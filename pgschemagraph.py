@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import sys
 import psycopg2
 from xml.sax.saxutils import escape
@@ -15,16 +16,16 @@ class Table(object):
         self.columns = []
         self.pk = None
         self.fks = []
-    
+
     def add_column(self, name, type, nullable):
         self.columns.append((name, type, nullable))
-    
+
     def set_pk(self, pk_columns):
         self.pk = pk_columns
-    
+
     def add_fk(self, from_cols, to_schema, to_name, to_cols):
         self.fks.append((from_cols, to_schema, to_name, to_cols))
-    
+
     def __repr__(self):
         col_list = ', '.join('%s %s' % (cn, ct) for cn, ct, cnn in self.columns)
         return '%s.%s(%s)' % (self.schema, self.name, col_list)
@@ -37,13 +38,13 @@ def get_tables(conn, schemas):
     cursor.execute(sql)
     for table_schema, table_name in cursor.fetchall():
         t = Table(table_schema, table_name)
-        
+
         sql = """SELECT column_name, COALESCE(domain_name, data_type) AS data_type, is_nullable FROM information_schema.columns
             WHERE table_schema = '%s' AND table_name = '%s' ORDER BY ordinal_position""" % (table_schema, table_name)
         cursor.execute(sql)
         for column_name, data_type, is_nullable in cursor.fetchall():
             t.add_column(column_name, data_type, (is_nullable == 'YES'))
-        
+
         sql = """SELECT column_name FROM information_schema.constraint_column_usage
             WHERE constraint_name = (SELECT constraint_name FROM information_schema.table_constraints
                 WHERE table_schema = '%s' AND table_name = '%s' AND constraint_type = 'PRIMARY KEY')""" % (table_schema, table_name)
@@ -51,9 +52,9 @@ def get_tables(conn, schemas):
         pk_cols = []
         for column_name, in cursor.fetchall():
             pk_cols.append(column_name)
-        
+
         t.set_pk(pk_cols)
-        
+
         sql = """SELECT constraint_name FROM information_schema.table_constraints
                 WHERE table_schema = '%s' AND table_name = '%s' AND constraint_type = 'FOREIGN KEY'""" % (table_schema, table_name)
         cursor.execute(sql)
@@ -64,7 +65,7 @@ def get_tables(conn, schemas):
             from_cols = []
             for column_name in cursor.fetchall():
                 from_cols.append(column_name)
-                
+
             sql = """SELECT table_schema, table_name, column_name FROM information_schema.constraint_column_usage
                 WHERE constraint_name = '%s'""" % constraint_name
             cursor.execute(sql)
@@ -74,14 +75,14 @@ def get_tables(conn, schemas):
                 to_schema = table_schema
                 to_name = table_name
                 to_cols.append(column_name)
-            
+
             if to_name is None:
                 continue
-            
+
             t.add_fk(from_cols, to_schema, to_name, to_cols)
-        
+
         all_tables.append(t)
-    
+
     return all_tables
 
 def to_html_table(table):
@@ -149,7 +150,7 @@ def to_graphml(all_tables):
     for t in all_tables:
         t.node_id = next_id
         next_id += 1
-    
+
     parts = []
     parts.append("""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -172,18 +173,18 @@ def to_graphml(all_tables):
 
     for t in all_tables:
         parts.append(to_graphml_node(t, t.node_id))
-    
+
     tables_by_name = {}
     for t in all_tables:
         tables_by_name[(t.schema, t.name)] = t
-    
+
     for t in all_tables:
         for fk in t.fks:
             from_id = t.node_id
             to_id = tables_by_name[(fk[1], fk[2])].node_id
             parts.append(to_graphml_edge(from_id, to_id, next_id))
             next_id += 1
-    
+
     parts.append("""  </graph>
   <data key="d0">
     <y:Resources/>
@@ -202,23 +203,23 @@ def main():
     parser.add_option("-u", "--user", action="store", help="database user to login as")
     parser.add_option("-p", "--password", action="store", help="user's password")
     parser.add_option("-s", "--schemas", action="store", default='public', help="list of schemas to process")
-    
+
     options, args = parser.parse_args()
-    
+
     if options.host is None:
         parser.error('host is required')
     if options.database is None:
         parser.error('database is required')
     if options.user is None:
         parser.error('user is required')
-        
+
     params = {'user': options.user, 'password': options.password, 'dbname': options.database, 'host': options.host, 'port': options.port }
     schema_list = options.schemas.split(',')
-    
+
     conn = connect(**params)
     all_tables = get_tables(conn, schema_list)
     conn.close()
-    
+
     print to_graphml(all_tables)
 
 if __name__ == '__main__':
