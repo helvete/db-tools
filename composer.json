@@ -11,7 +11,5 @@
 			"name": "helvete"
 		}
 	],
-	"require": {
-		"python": "~2.7.0"
-	}
+    "bin": ["./pgschemagraph.py"]
 }
