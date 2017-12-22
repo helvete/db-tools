@@ -1,0 +1,16 @@
+{
+	"name": "helvete/db-tools",
+	"type": "python-lib",
+	"description": "DB schema diagram generator tool",
+	"authors": [
+		{
+			"name": "Edmund Horner"
+		},
+		{
+			"name": "helvete"
+		}
+	],
+	"require": {
+		"python": ">= 2.0"
+	}
+}
