@@ -11,5 +11,5 @@
 			"name": "helvete"
 		}
 	],
-    "bin": ["./pgschemagraph.py"]
+	"bin": ["./pgschemagraph.py"]
 }
