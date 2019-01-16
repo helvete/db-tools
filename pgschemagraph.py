@@ -60,14 +60,14 @@ def get_tables(conn, schemas):
         cursor.execute(sql)
         for constraint_name, in cursor.fetchall():
             sql = """SELECT column_name FROM information_schema.key_column_usage
-                WHERE constraint_name = '%s' ORDER BY position_in_unique_constraint""" % constraint_name
+                WHERE constraint_name = '%s' AND constraint_schema = '%s' ORDER BY position_in_unique_constraint""" % (constraint_name, table_schema)
             cursor.execute(sql)
             from_cols = []
             for column_name in cursor.fetchall():
                 from_cols.append(column_name)
 
             sql = """SELECT table_schema, table_name, column_name FROM information_schema.constraint_column_usage
-                WHERE constraint_name = '%s'""" % constraint_name
+                WHERE constraint_name = '%s' AND constraint_schema = '%s'""" % (constraint_name, table_schema)
             cursor.execute(sql)
             to_cols = []
             to_name = None
